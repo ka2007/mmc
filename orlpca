@@ -1,0 +1,42 @@
+% 采用2DPCA双边同时降维，最近邻分类器分类
+abs=pwd;
+rep=5; L=40; J=10;n=L*J;dc=112; dr=92;  %niter=5;
+cd ..
+load data_norm.mat; load index10.mat; load label.mat; label_org=label;  %
+cd pca;
+J_tr=3;
+for r=1:rep
+    if mod(r, 10)==0
+        r
+    end    
+    %tic 
+    index1=[]; index2=[]; % ind=randperm(J);
+    for l=1:L
+        index1=[index1 (l-1)*J+ind1{J_tr}(r, :)]; index2=[index2 (l-1)*J+ind2{J_tr}(r, :)];
+    end
+    
+    y=Xs_org(:, index2); y_label=label_org(index2); ndata2=size(y, 2);
+    x=Xs_org(:, index1); x_label=label_org(index1); ndata1=size(x, 2);
+  %  clear Xs_org;
+
+    w=mean(x,2); x=x-repmat(w, [1 ndata1]);  y=y-repmat(w, [1 ndata2]);
+   
+    opts.center=0;  bp=pca(x', opts); bp.q=size(bp.U,2);
+    z_tr=bp.U'*x; z_ts=bp.U'*y; 
+    Dtmp=zeros(bp.q,ndata1); I=zeros(bp.q,ndata2);
+    for i=1:ndata2
+        D=Dtmp;
+        z2tmp=z_ts(:, i);
+        for j=1:ndata1
+            zz=z2tmp-z_tr(:,j);
+            D(:, j)=cumsum(zz.^2);
+        end
+        [value,index]=min(D,[],2);
+        I(:, i)=index;
+    end
+    nn_err{r}=sum(x_label(I)~=repmat(y_label, [bp.q 1]), 2)'/ndata2; % nn_err{r}是一个行向量，存储所有可能投影维数的错误率
+%   eval(['save rs_pca_' int2str(J_tr) '_' int2str(r) '.mat nn_err']);
+end
+% [err,i1]=min(nn_err,[],1);
+% [opte,i2]=min(err);i1=i1(i2);
+% mvn_eopt=opte;
